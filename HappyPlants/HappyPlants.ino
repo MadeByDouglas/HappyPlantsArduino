@@ -2,10 +2,37 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <ArduinoHttpClient.h>
+#include <WiFiNINA.h>
+#include "arduino_secrets.h"
 
 Adafruit_SSD1306 display(-1);
 
-// SOIL VARS
+// NETWORKING --------------------------------------------------------
+
+char ssid[] = SECRET_SSID;    // network ID stored in arduino_secrets.h
+char pass[] = SECRET_PASS;    // network password
+
+WiFiClient wifi;
+// WebSocketClient client = WebSocketClient(wifi, serverAddress, port); // might try this later
+int status = WL_IDLE_STATUS;
+
+// PROD
+
+char serverAddress[] = "app.happyplants.io";
+int port = 80;
+
+// DEV
+
+// char serverAddress[] = "192.168.1.2";
+// int port = 3000;
+
+String httpMethod = "GET";
+String path = "/hello";
+String query = "";
+
+
+// SOIL VARS --------------------------------------------------------
 
 int soilVal = 0;
 int soilPin = A1;
@@ -19,7 +46,7 @@ int soilPower = 7;
 // dry < 400
 // air < 100
 
-// LIGHT VARS
+// LIGHT VARS --------------------------------------------------------
 
 int lightVal = 0;
 int lightPin = A2;
@@ -62,6 +89,30 @@ void setup() {
   // SETUP DEBUG OUTPUT
   Serial.begin(9600);
 
+  // SETUP NETWORK
+  while ( status != WL_CONNECTED) {
+    Serial.print("=> Attempting to connect to Network named: ");
+    Serial.println(ssid);            // print the network name (SSID)
+
+    // display network status on screen
+    displayPrep(0, 0, 1);
+    displayNetworkData("Connecting: ", ssid);
+
+    status = WiFi.begin(ssid, pass);
+  }
+
+  Serial.print("=> SSID: ");         // print the SSID of the network
+  Serial.println(WiFi.SSID());
+  IPAddress ip = WiFi.localIP();
+  Serial.print("=> IP Address: ");   // print your Arduino's IP address
+  Serial.println(ip);
+
+  // display network status on screen
+  displayPrep(0, 0, 1);
+  displayNetworkData("Connected at: ", String(ip));
+
+  delay(1000); // so you can read connection confirmation
+
   // SETUP SOIL WATER SENSOR
 
   // pulse the soil water sensor to prevent it degrading if it were to always be on (what the internet says to do)
@@ -77,51 +128,84 @@ void loop() {
   // -----------------SOIL SENSOR-----------------------
 
   // get display ready
-  displaySensorDisplayPrep(0, 0);
+  displayPrep(0, 0, 2);
 
   // print to debugger
   Serial.print("Soil Moisture: ");
   Serial.println(readSoil());
 
   // display to oled display
-  displaySensorData(soilVal, "Soil: ");
+  displaySensorData("Soil: ", soilVal);
 
   delay(2000);
 
   // -----------------LIGHT SENSOR---------------------
 
   // get display ready
-  displaySensorDisplayPrep(40, 0);
+  displayPrep(40, 0, 2);
 
   // print to debugger
   Serial.print("Light Levels: ");
   Serial.println(readLight());
 
   // display to oled display
-  displaySensorData(lightVal, "Light: ");
+  displaySensorData("Light: ", lightVal);
 
   delay(2000);
 
-  // --------------------------------------------------
+  // ------------------NETWORK------------------------
+
+  if (wifi.connect(serverAddress, port)) {
+    // send HTTP request header
+    wifi.println(httpMethod + " " + path + " HTTP/1.1");
+    wifi.println("Host: " + String(serverAddress));
+    wifi.println("Connection: close");
+    wifi.println(); // end HTTP request header
+
+    // send HTTP body
+    wifi.println(query);
+
+    while (wifi.connected()) {
+      if (wifi.available()) {
+        char c = wifi.read();
+        Serial.print(c);
+      }
+    }
+
+    wifi.stop();
+    Serial.println("--------------");
+    Serial.println("disconnected");
+    
+    // show confirmation on oled display
+    displayPrep(0, 0, 1);
+    displayNetworkData("Data Sent", "And Received");
+    
+  } else {
+    Serial.println("connection failed");
+  }
+
+  delay(2000);
   
 }
 
-
-
-
-
 // DISPLAY FUNCTIONS
 
-void displaySensorDisplayPrep(int xVal, int yVal) {
+void displayPrep(int xVal, int yVal, int textSize) {
   display.clearDisplay();
-  display.setTextSize(2);
+  display.setTextSize(textSize);
   display.setTextColor(WHITE);
   display.setCursor(xVal, yVal);
 }
 
-void displaySensorData(int val, String label) {
+void displaySensorData(String label, int val) {
   display.println(label);
   display.println(val);
+  display.display();
+}
+
+void displayNetworkData(String label, String status) {
+  display.println(label);
+  display.println(status);
   display.display();
 }
 
@@ -139,10 +223,6 @@ int readSoil() {
 // LIGHT SENSOR FUNCTIONS
 
 int readLight() {
-    // digitalWrite(lightPower, HIGH);
-    // delay(10);
-
     lightVal = analogRead(lightPin);
-    // digitalWrite(lightPower, LOW);
     return lightVal;
 }
