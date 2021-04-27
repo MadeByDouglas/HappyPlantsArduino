@@ -27,8 +27,9 @@ int port = 80;
 // char serverAddress[] = "192.168.1.2";
 // int port = 3000;
 
-String httpMethod = "GET";
-String path = "/hello";
+String httpMethod = "POST";
+String pathWater = "/gardener/Douglas/George/water";
+String pathLight = "/gardener/Douglas/George/light";
 String query = "";
 
 
@@ -153,11 +154,11 @@ void loop() {
 
   delay(2000);
 
-  // ------------------NETWORK------------------------
+  // ------------------NETWORK WATER------------------------
 
   if (wifi.connect(serverAddress, port)) {
     // send HTTP request header
-    wifi.println(httpMethod + " " + path + " HTTP/1.1");
+    wifi.println(httpMethod + " " + pathWater + " HTTP/1.1");
     wifi.println("Host: " + String(serverAddress));
     wifi.println("Connection: close");
     wifi.println(); // end HTTP request header
@@ -173,18 +174,53 @@ void loop() {
     }
 
     wifi.stop();
+    Serial.println(); // add line between end of server response and our messages
     Serial.println("--------------");
     Serial.println("disconnected");
     
     // show confirmation on oled display
     displayPrep(0, 0, 1);
-    displayNetworkData("Data Sent", "And Received");
+    displayNetworkData("Water Data Sent", "");
     
   } else {
     Serial.println("connection failed");
   }
 
-  delay(2000);
+  delay(1000);
+
+    // ------------------NETWORK LIGHT------------------------
+
+  if (wifi.connect(serverAddress, port)) {
+    // send HTTP request header
+    wifi.println(httpMethod + " " + pathLight + " HTTP/1.1");
+    wifi.println("Host: " + String(serverAddress));
+    wifi.println("Connection: close");
+    wifi.println(); // end HTTP request header
+
+    // send HTTP body
+    wifi.println(query);
+
+    while (wifi.connected()) {
+      if (wifi.available()) {
+        char c = wifi.read();
+        Serial.print(c);
+      }
+    }
+
+    wifi.stop();
+    Serial.println(); // add line between end of server response and our messages
+    Serial.println("--------------");
+    Serial.println("disconnected");
+    
+    // show confirmation on oled display
+    displayPrep(0, 0, 1);
+    displayNetworkData("Light Data Sent", "");
+    
+  } else {
+    Serial.println("connection failed");
+  }
+
+  delay(1000);
   
 }
 
