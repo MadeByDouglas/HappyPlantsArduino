@@ -14,7 +14,6 @@ char ssid[] = SECRET_SSID;    // network ID stored in arduino_secrets.h
 char pass[] = SECRET_PASS;    // network password
 
 WiFiClient wifi;
-// WebSocketClient client = WebSocketClient(wifi, serverAddress, port); // might try this later
 int status = WL_IDLE_STATUS;
 
 // PROD
@@ -26,6 +25,12 @@ int port = 80;
 
 // char serverAddress[] = "192.168.1.2";
 // int port = 3000;
+
+
+HttpClient client = HttpClient(wifi, serverAddress, port);
+// WebSocketClient client = WebSocketClient(wifi, serverAddress, port); // might try this later
+
+
 
 String httpMethod = "POST";
 String pathWater = "/gardener/Douglas/George/water";
@@ -157,14 +162,25 @@ void loop() {
   // ------------------NETWORK WATER------------------------
 
   if (wifi.connect(serverAddress, port)) {
-    // send HTTP request header
-    wifi.println(httpMethod + " " + pathWater + " HTTP/1.1");
-    wifi.println("Host: " + String(serverAddress));
-    wifi.println("Connection: close");
-    wifi.println(); // end HTTP request header
 
-    // send HTTP body
-    wifi.println(query);
+    String data = "value=" + String(soilVal);
+
+    client.beginRequest();
+
+    client.post(pathWater);
+    client.sendHeader("Content-Type", "application/json");
+    client.beginBody();
+    client.print(data);
+    client.endRequest();
+
+    // // send HTTP request header
+    // wifi.println(httpMethod + " " + pathWater + " HTTP/1.1");
+    // wifi.println("Host: " + String(serverAddress));
+    // wifi.println("Connection: close");
+    // wifi.println(); // end HTTP request header
+
+    // // send HTTP body
+    // wifi.println(query);
 
     while (wifi.connected()) {
       if (wifi.available()) {
@@ -191,14 +207,27 @@ void loop() {
     // ------------------NETWORK LIGHT------------------------
 
   if (wifi.connect(serverAddress, port)) {
-    // send HTTP request header
-    wifi.println(httpMethod + " " + pathLight + " HTTP/1.1");
-    wifi.println("Host: " + String(serverAddress));
-    wifi.println("Connection: close");
-    wifi.println(); // end HTTP request header
 
-    // send HTTP body
-    wifi.println(query);
+    String data = "{value:" + String(lightVal) + "}";
+
+    client.beginRequest();
+
+    client.post(pathLight);
+    client.sendHeader("Content-Type", "application/json");
+    client.beginBody();
+    client.print(data);
+    client.endRequest();
+
+
+
+    // // send HTTP request header
+    // wifi.println(httpMethod + " " + pathLight + " HTTP/1.1");
+    // wifi.println("Host: " + String(serverAddress));
+    // wifi.println("Connection: close");
+    // wifi.println(); // end HTTP request header
+
+    // // send HTTP body
+    // wifi.println(query);
 
     while (wifi.connected()) {
       if (wifi.available()) {
