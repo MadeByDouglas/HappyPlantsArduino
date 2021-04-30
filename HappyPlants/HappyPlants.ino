@@ -2,8 +2,9 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <ArduinoHttpClient.h>
+//#include <ArduinoHttpClient.h>
 #include <WiFiNINA.h>
+#include <ArduinoJson.h>
 #include "arduino_secrets.h"
 
 Adafruit_SSD1306 display(-1);
@@ -27,15 +28,13 @@ int port = 80;
 // int port = 3000;
 
 
-HttpClient client = HttpClient(wifi, serverAddress, port);
+//HttpClient client = HttpClient(wifi, serverAddress, port);
 // WebSocketClient client = WebSocketClient(wifi, serverAddress, port); // might try this later
 
 
 
-String httpMethod = "POST";
 String pathWater = "/gardener/Douglas/George/water";
 String pathLight = "/gardener/Douglas/George/light";
-String query = "";
 
 
 // SOIL VARS --------------------------------------------------------
@@ -83,11 +82,11 @@ void setup() {
   
   display.startscrollright(0x00, 0x07);
 
-  delay(1000);
+  delay(500);
   display.stopscroll();
-  delay(1000);
+  delay(500);
   display.startscrollleft(0x00, 0x07);
-  delay(1000);
+  delay(500);
   display.stopscroll();
   
   display.clearDisplay();
@@ -97,6 +96,7 @@ void setup() {
 
   // SETUP NETWORK
   while ( status != WL_CONNECTED) {
+    delay(500);
     Serial.print("=> Attempting to connect to Network named: ");
     Serial.println(ssid);            // print the network name (SSID)
 
@@ -163,24 +163,36 @@ void loop() {
 
   if (wifi.connect(serverAddress, port)) {
 
-    String data = "value=" + String(soilVal);
+//    Serial.println();
 
-    client.beginRequest();
+//    client.beginRequest();
+//
+//    client.post(pathWater);
+//    client.sendHeader("Accept", "*/*");
+//    client.sendHeader("Accept-Encoding", "gzip, deflate");
+//    client.sendHeader("Content-Type", "application/json");
+//    client.sendHeader("Accept-Language", "en-us");
+//    client.sendHeader("Cache-Control", "no-cache");
+//    client.beginBody();
+//    // client.print();
+//    serializeJson(doc, client);
+//    client.endRequest();
 
-    client.post(pathWater);
-    client.sendHeader("Content-Type", "application/json");
-    client.beginBody();
-    client.print(data);
-    client.endRequest();
+    // setup body
+    String body = String("{\n  \"value\": " + String(soilVal) + "\n}");
 
-    // // send HTTP request header
-    // wifi.println(httpMethod + " " + pathWater + " HTTP/1.1");
-    // wifi.println("Host: " + String(serverAddress));
-    // wifi.println("Connection: close");
-    // wifi.println(); // end HTTP request header
+  //   DynamicJsonDocument doc(64);
+  //   doc["value"] = soilVal;
 
-    // // send HTTP body
-    // wifi.println(query);
+  //  String body = String(serializeJson(doc, Serial));
+
+    Serial.println("--------------");
+    Serial.println(body);
+    Serial.println("--------------");
+
+    //send request
+    postData(body, pathWater);
+    // getHello();
 
     while (wifi.connected()) {
       if (wifi.available()) {
@@ -190,13 +202,14 @@ void loop() {
     }
 
     wifi.stop();
+
     Serial.println(); // add line between end of server response and our messages
     Serial.println("--------------");
     Serial.println("disconnected");
     
     // show confirmation on oled display
     displayPrep(0, 0, 1);
-    displayNetworkData("Water Data Sent", "");
+    displayNetworkData("Water Data Sent", body);
     
   } else {
     Serial.println("connection failed");
@@ -208,15 +221,15 @@ void loop() {
 
   if (wifi.connect(serverAddress, port)) {
 
-    String data = "{value:" + String(lightVal) + "}";
+    // String data = "{value:" + String(lightVal) + "}";
 
-    client.beginRequest();
+    // client.beginRequest();
 
-    client.post(pathLight);
-    client.sendHeader("Content-Type", "application/json");
-    client.beginBody();
-    client.print(data);
-    client.endRequest();
+    // client.post(pathLight);
+    // client.sendHeader("Content-Type", "application/json");
+    // client.beginBody();
+    // client.print(data);
+    // client.endRequest();
 
 
 
@@ -229,17 +242,17 @@ void loop() {
     // // send HTTP body
     // wifi.println(query);
 
-    while (wifi.connected()) {
-      if (wifi.available()) {
-        char c = wifi.read();
-        Serial.print(c);
-      }
-    }
+    // while (wifi.connected()) {
+    //   if (wifi.available()) {
+    //     char c = wifi.read();
+    //     Serial.print(c);
+    //   }
+    // }
 
-    wifi.stop();
-    Serial.println(); // add line between end of server response and our messages
-    Serial.println("--------------");
-    Serial.println("disconnected");
+    // wifi.stop();
+    // Serial.println(); // add line between end of server response and our messages
+    // Serial.println("--------------");
+    // Serial.println("disconnected");
     
     // show confirmation on oled display
     displayPrep(0, 0, 1);
@@ -290,4 +303,29 @@ int readSoil() {
 int readLight() {
     lightVal = analogRead(lightPin);
     return lightVal;
+}
+
+// NETWORK FUNCTIONS
+
+void postData(String body, String path) {
+    // send HTTP request header
+    wifi.println("POST " + path + " HTTP/1.1");
+    wifi.println("Host: " + String(serverAddress));
+    wifi.println("Content-Type: application/json");
+    wifi.println("Accept: */*");
+    wifi.println("Cache-Control: no-cache");
+    wifi.println("Accept-Encoding: gzip, deflate");
+    wifi.println("Accept-Language: en-us");
+    wifi.println("Content-Length: " + String(body.length()));
+    wifi.println("Connection: close");
+    wifi.println(); // end HTTP request header
+    wifi.println(body);
+    // delay(500);
+}
+
+void getHello() {
+    wifi.println("GET /hello HTTP/1.1");
+    wifi.println("Host: " + String(serverAddress));
+    wifi.println("Connection: close");
+    wifi.println(); // end HTTP request header
 }
