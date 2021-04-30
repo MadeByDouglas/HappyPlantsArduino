@@ -2,12 +2,15 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-//#include <ArduinoHttpClient.h>
 #include <WiFiNINA.h>
-#include <ArduinoJson.h>
 #include "arduino_secrets.h"
 
 Adafruit_SSD1306 display(-1);
+
+// USER CONSTANTS --------------------------------------------------------
+// YOU MUST SET THESE TO MATCH THE MOBILE APP
+String gardenerName = "Douglas";
+String plantName = "George";
 
 // NETWORKING --------------------------------------------------------
 
@@ -22,20 +25,13 @@ int status = WL_IDLE_STATUS;
 char serverAddress[] = "app.happyplants.io";
 int port = 80;
 
-// DEV
+// LOCAL DEV
 
 // char serverAddress[] = "192.168.1.2";
-// int port = 3000;
+// int port = 8080;
 
-
-//HttpClient client = HttpClient(wifi, serverAddress, port);
-// WebSocketClient client = WebSocketClient(wifi, serverAddress, port); // might try this later
-
-
-
-String pathWater = "/gardener/Douglas/George/water";
-String pathLight = "/gardener/Douglas/George/light";
-
+String pathWater = "/water";
+String pathLight = "/light";
 
 // SOIL VARS --------------------------------------------------------
 
@@ -161,107 +157,12 @@ void loop() {
 
   // ------------------NETWORK WATER------------------------
 
-  if (wifi.connect(serverAddress, port)) {
-
-//    Serial.println();
-
-//    client.beginRequest();
-//
-//    client.post(pathWater);
-//    client.sendHeader("Accept", "*/*");
-//    client.sendHeader("Accept-Encoding", "gzip, deflate");
-//    client.sendHeader("Content-Type", "application/json");
-//    client.sendHeader("Accept-Language", "en-us");
-//    client.sendHeader("Cache-Control", "no-cache");
-//    client.beginBody();
-//    // client.print();
-//    serializeJson(doc, client);
-//    client.endRequest();
-
-    // setup body
-    String body = String("{\n  \"value\": " + String(soilVal) + "\n}");
-
-  //   DynamicJsonDocument doc(64);
-  //   doc["value"] = soilVal;
-
-  //  String body = String(serializeJson(doc, Serial));
-
-    Serial.println("--------------");
-    Serial.println(body);
-    Serial.println("--------------");
-
-    //send request
-    postData(body, pathWater);
-    // getHello();
-
-    while (wifi.connected()) {
-      if (wifi.available()) {
-        char c = wifi.read();
-        Serial.print(c);
-      }
-    }
-
-    wifi.stop();
-
-    Serial.println(); // add line between end of server response and our messages
-    Serial.println("--------------");
-    Serial.println("disconnected");
-    
-    // show confirmation on oled display
-    displayPrep(0, 0, 1);
-    displayNetworkData("Water Data Sent", body);
-    
-  } else {
-    Serial.println("connection failed");
-  }
-
+  sendSensorData(soilVal, pathWater);
   delay(1000);
 
     // ------------------NETWORK LIGHT------------------------
 
-  if (wifi.connect(serverAddress, port)) {
-
-    // String data = "{value:" + String(lightVal) + "}";
-
-    // client.beginRequest();
-
-    // client.post(pathLight);
-    // client.sendHeader("Content-Type", "application/json");
-    // client.beginBody();
-    // client.print(data);
-    // client.endRequest();
-
-
-
-    // // send HTTP request header
-    // wifi.println(httpMethod + " " + pathLight + " HTTP/1.1");
-    // wifi.println("Host: " + String(serverAddress));
-    // wifi.println("Connection: close");
-    // wifi.println(); // end HTTP request header
-
-    // // send HTTP body
-    // wifi.println(query);
-
-    // while (wifi.connected()) {
-    //   if (wifi.available()) {
-    //     char c = wifi.read();
-    //     Serial.print(c);
-    //   }
-    // }
-
-    // wifi.stop();
-    // Serial.println(); // add line between end of server response and our messages
-    // Serial.println("--------------");
-    // Serial.println("disconnected");
-    
-    // show confirmation on oled display
-    displayPrep(0, 0, 1);
-    displayNetworkData("Light Data Sent", "");
-    
-  } else {
-    Serial.println("connection failed");
-  }
-
+  sendSensorData(lightVal, pathLight);
   delay(1000);
   
 }
@@ -307,6 +208,51 @@ int readLight() {
 
 // NETWORK FUNCTIONS
 
+void sendSensorData(int data, String dataPath) {
+    if (wifi.connect(serverAddress, port)) {
+
+    // setup body
+    String body = String("{\n  \"value\": " + String(data) + "\n}");
+
+    // setup path
+    String path = "/gardener/" + gardenerName + "/" + plantName + dataPath;
+
+    Serial.println("Body: ");
+    Serial.println(body);
+    Serial.println("Path: ");
+    Serial.println(path);
+    Serial.println("--------------");
+
+    //send request
+    postData(body, path);
+
+    while (wifi.connected()) {
+      if (wifi.available()) {
+        char c = wifi.read();
+        Serial.print(c);
+      }
+    }
+
+    wifi.stop();
+
+    Serial.println(); // add line between end of server response and our messages
+    Serial.println("--------------");
+    Serial.println("disconnected");
+    
+    // show confirmation on oled display
+    displayPrep(0, 0, 1);
+    displayNetworkData("Data Sent: ", body);
+    delay(2000);
+    displayPrep(0, 0, 1);
+    displayNetworkData("Destination: ", path);
+    delay(2000);
+
+    
+  } else {
+    Serial.println("connection failed");
+  }
+}
+
 void postData(String body, String path) {
     // send HTTP request header
     wifi.println("POST " + path + " HTTP/1.1");
@@ -320,12 +266,44 @@ void postData(String body, String path) {
     wifi.println("Connection: close");
     wifi.println(); // end HTTP request header
     wifi.println(body);
-    // delay(500);
 }
 
-void getHello() {
+void getHelloWorld() {
     wifi.println("GET /hello HTTP/1.1");
     wifi.println("Host: " + String(serverAddress));
     wifi.println("Connection: close");
     wifi.println(); // end HTTP request header
 }
+
+
+
+
+// for reference, never quite figure out how to use the arduinoJson library or the arduinoHTTPClient library
+//#include <ArduinoHttpClient.h>
+//#include <ArduinoJson.h>
+
+//HttpClient client = HttpClient(wifi, serverAddress, port);
+
+// JSON
+
+//   DynamicJsonDocument doc(64);
+//   doc["value"] = soilVal;
+
+//  String body = String(serializeJson(doc, Serial));
+
+// CLIENT
+
+//    client.beginRequest();
+//    client.post(pathWater);
+//    client.sendHeader("Accept", "*/*");
+//    client.sendHeader("Accept-Encoding", "gzip, deflate");
+//    client.sendHeader("Content-Type", "application/json");
+//    client.sendHeader("Accept-Language", "en-us");
+//    client.sendHeader("Cache-Control", "no-cache");
+//    client.beginBody();
+//    serializeJson(doc, client);
+//    client.endRequest();
+
+
+// also websockets would be interesting 
+// WebSocketClient client = WebSocketClient(wifi, serverAddress, port); // might try this later
