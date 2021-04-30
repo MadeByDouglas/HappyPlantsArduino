@@ -141,10 +141,17 @@ void loop() {
 
   delay(2000);
 
+  // ------------------NETWORK WATER------------------------
+
+  sendSensorData(soilVal, pathWater);
+  delay(1000);
+
+
+
   // -----------------LIGHT SENSOR---------------------
 
   // get display ready
-  displayPrep(40, 0, 2);
+  displayPrep(0, 0, 2);
 
   // print to debugger
   Serial.print("Light Levels: ");
@@ -155,12 +162,7 @@ void loop() {
 
   delay(2000);
 
-  // ------------------NETWORK WATER------------------------
-
-  sendSensorData(soilVal, pathWater);
-  delay(1000);
-
-    // ------------------NETWORK LIGHT------------------------
+  // ------------------NETWORK LIGHT------------------------
 
   sendSensorData(lightVal, pathLight);
   delay(1000);
